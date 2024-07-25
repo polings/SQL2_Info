@@ -3,6 +3,8 @@
 Data analysis and statistics for School 21.
 
 
+💡 [Tap here](https://new.oprosso.net/p/4cb31ec3f47a4596bc758ea1861fb624) **to leave your feedback on the project**. It's anonymous and will help our team make your educational experience better. We recommend completing the survey immediately after the project.
+
 ## Contents
 
 1. [Chapter I](#chapter-i) \
@@ -416,5 +418,3 @@ Add the creation and filling of this database, as well as the written procedures
 ##### 3) Create a stored procedure with an output parameter that destroys all SQL DML triggers in the current database. The output parameter will return the number of triggers destroyed.
 
 ##### 4) Create a stored procedure with an input parameter that returns names and descriptions of object types (stored procedures and scalar functions only) that have a string specified by the procedure parameter.
-
-💡 [Tap here](https://forms.yandex.ru/cloud/64182088eb61462532cee6b5/) **to leave your feedback on the project**. Our Team really tries to make your educational experience better.
