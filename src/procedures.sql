@@ -1,3 +1,4 @@
+-- This procedure imports data from a specified CSV file into a target table
 CREATE OR REPLACE PROCEDURE import_csv(
     table_name TEXT,
     file_path TEXT,
@@ -13,7 +14,7 @@ BEGIN
 END;
 $$;
 
-
+-- This procedure exports data from a table into a target specified CSV file
 CREATE OR REPLACE PROCEDURE export_csv(
     table_name TEXT,
     file_path TEXT,
@@ -28,3 +29,5 @@ BEGIN
     RAISE NOTICE 'Data exported successfully from table % to file %', table_name, file_path;
 END;
 $$;
+
+CALL import_csv('your_table_name', '/path/to/your/file.csv');
