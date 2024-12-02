@@ -151,6 +151,7 @@ BEGIN
 END;
 $$;
 
+-- put your file path here
 CALL import_csv('tasks', '/Users/hakekett/projects/SQL2_Info21_v1.0-1/datasets/tasks.csv');
 CALL import_csv('peers', '/Users/hakekett/projects/SQL2_Info21_v1.0-1/datasets/peers.csv');
 CALL import_csv('timetracking', '/Users/hakekett/projects/SQL2_Info21_v1.0-1/datasets/time_tracking.csv');
