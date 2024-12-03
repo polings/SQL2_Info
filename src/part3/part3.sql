@@ -1,11 +1,11 @@
-
 -- 1) Write a function that returns the TransferredPoints table in a more human-readable form
+DROP FUNCTION IF EXISTS get_human_readable_transferred_points();
 CREATE OR REPLACE FUNCTION get_human_readable_transferred_points()
     RETURNS TABLE
             (
-                peer1        VARCHAR(255),
-                peer2        VARCHAR(255),
-                pointsamount INT
+                "peer1"        VARCHAR(255),
+                "peer2"        VARCHAR(255),
+                "pointsamount" INT
             )
 AS
 $$
@@ -30,4 +30,78 @@ SELECT *
 FROM get_human_readable_transferred_points() AS MyReadableTable;
 
 
--- 2) Write a function that returns a table of the following form: user name, name of the checked task, number of XP received
+-- 2) Write a function that returns a table of the following form: username, name of the checked task, number of XP received
+DROP FUNCTION IF EXISTS get_peers_xp_from_task();
+CREATE OR REPLACE FUNCTION get_peers_xp_from_task()
+    RETURNS TABLE
+            (
+                "Peer" VARCHAR(255),
+                "Task" VARCHAR(255),
+                "XP"   INT
+            )
+AS
+$$
+BEGIN
+    RETURN QUERY
+        SELECT peer, task, x.xp_amount
+        FROM checks c
+                 JOIN verter v ON c.id = v.check_id
+                 JOIN xp x ON c.id = x.check_id
+        WHERE v.state = 'Success'
+        ORDER BY peer;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT *
+FROM get_peers_xp_from_task();
+
+-- 3) Write a function that finds the peers who have not left campus for the whole day
+DROP FUNCTION IF EXISTS get_peers_not_left_campus_whole_day(DATE);
+CREATE OR REPLACE FUNCTION get_peers_not_left_campus_whole_day(day DATE)
+    RETURNS TABLE
+            (
+                "Peer" VARCHAR(255)
+            )
+AS
+$$
+BEGIN
+    RETURN QUERY
+        SELECT peer
+        FROM timetracking
+        WHERE date = day
+        GROUP BY peer, date
+        HAVING count(presence) > 2
+        ORDER BY peer;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT *
+FROM get_peers_not_left_campus_whole_day('2021-06-26');
+
+-- 4) Calculate the change in the number of peer points of each peer using the TransferredPoints table
+SELECT peer as "Peer", sum(points_change) AS "PointsChange"
+FROM ((SELECT checked_peer As peer, sum(points_amount) as points_change
+       FROM transferredpoints
+       GROUP BY checked_peer)
+      UNION
+      (SELECT checking_peer, -sum(points_amount)
+       FROM transferredpoints
+       GROUP BY checking_peer)) as ppccp
+GROUP BY peer
+ORDER BY "PointsChange";
+
+-- 5) Calculate the change in the number of peer points of each peer using the table returned by the first function from Part 3
+
+-- SELECT peer1 AS "Peer", sum(pointsamount) AS "PointsChange"
+-- FROM ((SELECT peer1, sum(pointsamount) AS pointsamount
+--        FROM get_human_readable_transferred_points()
+--        group by peer1)
+--       UNION
+--       (SELECT peer2, -sum(pointsamount) AS pointsamount
+--        FROM get_human_readable_transferred_points()
+--        group by peer2)) as ppccp
+-- GROUP BY "Peer"
+-- ORDER BY "PointsChange";
+
+
+
