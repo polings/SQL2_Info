@@ -46,14 +46,17 @@ BEGIN
         SELECT peer, task, x.xp_amount
         FROM checks c
                  JOIN verter v ON c.id = v.check_id
+                 JOIN p2p p ON c.id = p.check_id
                  JOIN xp x ON c.id = x.check_id
-        WHERE v.state = 'Success'
+        WHERE p.state = 'Success'
+          AND (v.state = 'Success' OR v.state IS NULL)
         ORDER BY peer;
 END;
 $$ LANGUAGE plpgsql;
 
 SELECT *
 FROM get_peers_xp_from_task();
+
 
 -- 3) Write a function that finds the peers who have not left campus for the whole day
 DROP FUNCTION IF EXISTS get_peers_not_left_campus_whole_day(DATE);
@@ -78,30 +81,61 @@ $$ LANGUAGE plpgsql;
 SELECT *
 FROM get_peers_not_left_campus_whole_day('2021-06-26');
 
+
 -- 4) Calculate the change in the number of peer points of each peer using the TransferredPoints table
 SELECT peer as "Peer", sum(points_change) AS "PointsChange"
-FROM ((SELECT checked_peer As peer, sum(points_amount) as points_change
+FROM ((SELECT checked_peer As peer, -sum(points_amount) as points_change
        FROM transferredpoints
        GROUP BY checked_peer)
       UNION
-      (SELECT checking_peer, -sum(points_amount)
+      (SELECT checking_peer, sum(points_amount)
        FROM transferredpoints
        GROUP BY checking_peer)) as ppccp
 GROUP BY peer
-ORDER BY "PointsChange";
+ORDER BY "PointsChange" DESC;
 
 -- 5) Calculate the change in the number of peer points of each peer using the table returned by the first function from Part 3
-
--- SELECT peer1 AS "Peer", sum(pointsamount) AS "PointsChange"
--- FROM ((SELECT peer1, sum(pointsamount) AS pointsamount
---        FROM get_human_readable_transferred_points()
---        group by peer1)
---       UNION
---       (SELECT peer2, -sum(pointsamount) AS pointsamount
---        FROM get_human_readable_transferred_points()
---        group by peer2)) as ppccp
--- GROUP BY "Peer"
--- ORDER BY "PointsChange";
-
+SELECT peer1 AS "Peer", sum(pointsamount) AS "PointsChange"
+FROM ((SELECT peer1, sum(pointsamount) AS pointsamount
+       FROM get_human_readable_transferred_points()
+       group by peer1)
+      UNION
+      (SELECT peer2, -sum(pointsamount) AS pointsamount
+       FROM get_human_readable_transferred_points()
+       group by peer2)) as ppccp
+GROUP BY peer1
+ORDER BY "PointsChange" DESC;
 
 
+-- 6) Find the most frequently checked task for each day
+WITH cte AS
+         (SELECT date,
+                 task,
+                 DENSE_RANK() over (PARTITION BY date ORDER BY count(task) DESC) AS rank
+          FROM checks
+          GROUP BY date, task)
+SELECT date, task
+FROM cte
+WHERE rank = 1
+ORDER BY date;
+
+
+-- 7) Find all peers who have completed the whole given block of tasks and the completion date of the last task
+-- DROP FUNCTION IF EXISTS get_peers_completed_block_of_tasks(block_name VARCHAR);
+-- CREATE OR REPLACE FUNCTION get_peers_completed_block_of_tasks(block_name VARCHAR)
+--     RETURNS TABLE
+--         (
+--             "Peer" VARCHAR,
+--             "Day" DATE
+--         )
+-- AS
+-- $$
+-- BEGIN
+--     RETURN QUERY
+--
+--
+-- END;
+-- $$ LANGUAGE plpgsql;
+SELECT title
+from tasks
+ORDER BY title
