@@ -159,11 +159,25 @@ ORDER BY date;
 
 
 -- 10) Determine the percentage of peers who have ever successfully passed a check on their birthday
+WITH s AS (SELECT count(distinct c.peer) AS success_peers
+           FROM checks c
+                    JOIN peers pr ON c.peer = pr.nickname AND TO_CHAR(c.date, 'MM-dd') = TO_CHAR(pr.birthday, 'MM-dd')
+                    JOIN p2p p ON c.id = p.check_id
+                    JOIN verter v ON c.id = v.check_id
+           WHERE p.state = 'Success'
+              OR v.state = 'Success'),
+     f AS (SELECT count(distinct c.peer) AS unsuccess_peers
+           FROM checks c
+                    JOIN peers pr ON c.peer = pr.nickname AND TO_CHAR(c.date, 'MM-dd') = TO_CHAR(pr.birthday, 'MM-dd')
+                    JOIN p2p p ON c.id = p.check_id
+                    JOIN verter v ON c.id = v.check_id
+           WHERE p.state = 'Failure'
+              OR v.state = 'Failure')
 
-SELECT nickname
-FROM peers p
-JOIN
-
+SELECT s.success_peers / (s.success_peers + f.unsuccess_peers)::numeric * 100   AS "SuccessfulChecks",
+       f.unsuccess_peers / (s.success_peers + f.unsuccess_peers)::numeric * 100 AS "UnsuccessfulChecks"
+FROM s,
+     f
 
 
 
