@@ -108,12 +108,12 @@ ORDER BY "PointsChange" DESC;
 
 
 -- 6) Find the most frequently checked task for each day
-WITH cte AS
-         (SELECT date,
-                 task,
-                 DENSE_RANK() over (PARTITION BY date ORDER BY count(task) DESC) AS rank
-          FROM checks
-          GROUP BY date, task)
+WITH cte AS(
+    SELECT date,
+           task,
+           DENSE_RANK() over (PARTITION BY date ORDER BY count(task) DESC) AS rank
+    FROM checks
+    GROUP BY date, task)
 SELECT date, task
 FROM cte
 WHERE rank = 1
@@ -158,6 +158,33 @@ ORDER BY date;
 -- $$ LANGUAGE plpgsql;
 
 
+-- 8) Determine which peer each student should go to for a check.
+WITH FriendRecommendations AS (
+    SELECT r1.peer AS original_peer,
+           r2.recommended_peer AS recommended_by_friends
+    FROM Recommendations r1
+    JOIN Recommendations r2 ON r1.recommended_peer = r2.peer
+    ),
+    RecommendationCounts AS (
+    SELECT original_peer,
+           recommended_by_friends,
+           COUNT(*) AS recommendation_count
+    FROM FriendRecommendations
+    GROUP BY original_peer, recommended_by_friends
+    ),
+    BestRecommendation AS (
+    SELECT original_peer,
+           recommended_by_friends AS chosen_peer,
+           recommendation_count,
+           RANK() OVER (PARTITION BY original_peer ORDER BY recommendation_count DESC, recommended_by_friends ASC) AS rank
+    FROM RecommendationCounts
+    )
+SELECT original_peer AS "Peer", chosen_peer AS "RecommendedPeer"
+FROM BestRecommendation
+WHERE rank = 1
+ORDER BY "Peer";
+
+
 -- 10) Determine the percentage of peers who have ever successfully passed a check on their birthday
 WITH s AS (SELECT count(distinct c.peer) AS success_peers
            FROM checks c
@@ -179,6 +206,7 @@ SELECT s.success_peers / (s.success_peers + f.unsuccess_peers)::numeric * 100   
 FROM s,
      f;
 
+
 -- 12) Using recursive common table expression, output the number of preceding tasks for each task
 WITH RECURSIVE TaskHierarchy AS (
     SELECT title, parent_task, 0 AS predecessors_count
@@ -187,7 +215,7 @@ WITH RECURSIVE TaskHierarchy AS (
 
     UNION ALL
 
-    SELECT t.title,t.parent_task, th.predecessors_count + 1 AS predecessors_count
+    SELECT t.title, t.parent_task, th.predecessors_count + 1 AS predecessors_count
     FROM Tasks t
     INNER JOIN TaskHierarchy th ON t.parent_task = th.title
     )
@@ -200,7 +228,7 @@ ORDER BY "PrevCount";
 -- 14) Find the peer with the highest amount of XP
 SELECT peer AS "Peer", sum(xp_amount) AS "XP"
 FROM checks
-         JOIN xp x ON checks.id = x.check_id
+JOIN xp x ON checks.id = x.check_id
 GROUP BY peer
 ORDER BY "XP" DESC
 LIMIT 1
