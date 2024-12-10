@@ -179,9 +179,28 @@ SELECT s.success_peers / (s.success_peers + f.unsuccess_peers)::numeric * 100   
 FROM s,
      f;
 
+-- 12) Using recursive common table expression, output the number of preceding tasks for each task
+WITH RECURSIVE TaskHierarchy AS (
+    SELECT title, parent_task, 0 AS predecessors_count
+    FROM Tasks
+    WHERE parent_task IS NULL
+
+    UNION ALL
+
+    SELECT t.title,t.parent_task, th.predecessors_count + 1 AS predecessors_count
+    FROM Tasks t
+    INNER JOIN TaskHierarchy th ON t.parent_task = th.title
+    )
+SELECT title AS "Task", MAX(predecessors_count) AS "PrevCount"
+FROM TaskHierarchy
+GROUP BY title
+ORDER BY "PrevCount";
+
+
 -- 14) Find the peer with the highest amount of XP
 SELECT peer AS "Peer", sum(xp_amount) AS "XP"
 FROM checks
-JOIN xp x ON checks.id = x.check_id
+         JOIN xp x ON checks.id = x.check_id
 GROUP BY peer
-ORDER BY "XP" DESC LIMIT 1
+ORDER BY "XP" DESC
+LIMIT 1
