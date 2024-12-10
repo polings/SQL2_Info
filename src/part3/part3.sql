@@ -251,6 +251,14 @@ SELECT * FROM get_recommended_peer_for_each_student();
 
 
 
+-- 9) Determine the percentage of peers who:
+-- Started Block 1 only;
+-- Started Block 2 only;
+-- Both started;
+-- Started neither.
+
+
+
 -- 10) Determine the percentage of peers who have ever successfully passed a check on their birthday
 DROP FUNCTION IF EXISTS get_peers_successfully_passed_check_their_birthday();
 CREATE OR REPLACE FUNCTION get_peers_successfully_passed_check_their_birthday()
@@ -289,6 +297,10 @@ SELECT * FROM get_peers_successfully_passed_check_their_birthday();
 
 
 
+-- 11) Determine all peers who did the given tasks 1 and 2, but did not do task 3
+
+
+
 -- 12) Using recursive common table expression, output the number of preceding tasks for each task
 DROP FUNCTION IF EXISTS get_number_of_preceding_tasks_for_each_task();
 CREATE OR REPLACE FUNCTION get_number_of_preceding_tasks_for_each_task()
@@ -320,6 +332,11 @@ END;
 $$ LANGUAGE plpgsql;
 
 SELECT * FROM get_number_of_preceding_tasks_for_each_task();
+
+
+
+-- 13) Find "lucky" days for checks. A day is considered "lucky" if it has at least N consecutive successful checks
+
 
 
 -- 14) Find the peer with the highest amount of XP
@@ -370,3 +387,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 SELECT * FROM get_peers_came_before_given_time('12:00:00'::TIME, 5);
+
+
+-- 16) Determine the peers who left the campus more than M times during the last N days
+-- 17) Determine for each month the percentage of early entries
