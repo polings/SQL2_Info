@@ -121,7 +121,27 @@ ORDER BY date;
 
 
 -- 7) Find all peers who have completed the whole given block of tasks and the completion date of the last task
+
+-- Найди всех пиров, выполнивших весь заданный блок задач и дату завершения последнего задания
+-- Параметры процедуры: название блока, например, «CPP».
+-- Результат выведи отсортированным по дате завершения.
+-- Формат вывода: ник пира, дата завершения блока (т. е. последнего выполненного задания из этого блока).
+
+-- SELECT peer, SUBSTRING(task FROM '^[^0-9]+') AS title_prefix, COUNT(*)
+-- FROM checks
+-- WHERE task LIKE 'CPP_'
+-- GROUP BY peer, title_prefix
+-- ORDER BY peer;
+--
+-- SELECT SUBSTRING(title FROM '^[^0-9]+') AS title_prefix
+-- FROM tasks
+-- WHERE title LIKE 'AP_'
+-- GROUP BY title_prefix
+-- ORDER BY title_prefix;
+
+
 -- DROP FUNCTION IF EXISTS get_peers_completed_block_of_tasks(block_name VARCHAR);
+
 -- CREATE OR REPLACE FUNCTION get_peers_completed_block_of_tasks(block_name VARCHAR)
 --     RETURNS TABLE
 --         (
@@ -136,6 +156,17 @@ ORDER BY date;
 --
 -- END;
 -- $$ LANGUAGE plpgsql;
-SELECT title
-from tasks
-ORDER BY title
+
+
+-- 10) Determine the percentage of peers who have ever successfully passed a check on their birthday
+
+SELECT nickname
+FROM peers p
+JOIN
+
+
+
+
+
+
+
