@@ -177,10 +177,11 @@ WITH s AS (SELECT count(distinct c.peer) AS success_peers
 SELECT s.success_peers / (s.success_peers + f.unsuccess_peers)::numeric * 100   AS "SuccessfulChecks",
        f.unsuccess_peers / (s.success_peers + f.unsuccess_peers)::numeric * 100 AS "UnsuccessfulChecks"
 FROM s,
-     f
+     f;
 
-
-
-
-
-
+-- 14) Find the peer with the highest amount of XP
+SELECT peer AS "Peer", sum(xp_amount) AS "XP"
+FROM checks
+JOIN xp x ON checks.id = x.check_id
+GROUP BY peer
+ORDER BY "XP" DESC LIMIT 1
