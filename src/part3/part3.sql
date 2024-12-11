@@ -343,25 +343,32 @@ $$
 DECLARE
     temp_days VARCHAR;
 BEGIN
-    SELECT string_agg(peer, E'\n')
-    INTO temp_peers
+    SELECT string_agg(day::TEXT, E'\n')
+    INTO temp_days
     FROM (
---         SELECT peer
---         FROM (
---             SELECT peer, count(time) AS times_count
---             FROM timetracking
---             WHERE time <= given_time AND presence = 1
---             GROUP BY peer
---         ) cte
---         WHERE times_count >= N_times
---         ORDER BY peer
+        WITH  total_checks AS (
+			SELECT c.id, c.date, p2p.time, p2p.state, xp.xp_amount
+			FROM checks c, p2p, xp
+			WHERE c.id = p2p.check_id AND (p2p.state = 'Success' OR p2p.state = 'Failure')
+				AND c.id = xp.check_id AND xp_amount >= (SELECT tasks.xp
+														 FROM tasks
+														 WHERE tasks.title = c.task) * 0.8
+			ORDER BY c.date, p2p.time),
+		 succes_in_a_row AS (
+			SELECT id, date, time, state,
+			(CASE WHEN state = 'Success' THEN row_number() over (partition by state, date) ELSE 0 END) AS amount
+												 FROM total_checks ORDER BY date
+		 ),
+		 max_in_day AS (SELECT s.date, MAX(amount) amount FROM succes_in_a_row s GROUP BY date)
+
+		 SELECT date AS day FROM max_in_day WHERE amount >= N_checks
     ) final_result;
 
     result_days := COALESCE(temp_days, 'No days found');
 END;
 $$ LANGUAGE plpgsql;
 
-CALL get_lucky_days( 3, '');
+CALL get_lucky_days( 5, '');
 
 
 
