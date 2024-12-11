@@ -237,7 +237,7 @@ BEGIN
             SELECT original_peer,
                    recommended_by_friends AS chosen_peer,
                    recommendation_count,
-                   RANK() OVER (PARTITION BY original_peer ORDER BY recommendation_count DESC, recommended_by_friends ASC) AS rank
+                   RANK() OVER (PARTITION BY original_peer ORDER BY recommendation_count DESC, recommended_by_friends) AS rank
             FROM RecommendationCounts
             )
         SELECT original_peer AS "Peer", chosen_peer AS "RecommendedPeer"
@@ -336,6 +336,32 @@ SELECT * FROM get_number_of_preceding_tasks_for_each_task();
 
 
 -- 13) Find "lucky" days for checks. A day is considered "lucky" if it has at least N consecutive successful checks
+DROP PROCEDURE IF EXISTS get_lucky_days(N_checks INT, OUT result_days VARCHAR);
+CREATE OR REPLACE PROCEDURE get_lucky_days(N_checks INT, OUT result_days TEXT)
+AS
+$$
+DECLARE
+    temp_days VARCHAR;
+BEGIN
+    SELECT string_agg(peer, E'\n')
+    INTO temp_peers
+    FROM (
+--         SELECT peer
+--         FROM (
+--             SELECT peer, count(time) AS times_count
+--             FROM timetracking
+--             WHERE time <= given_time AND presence = 1
+--             GROUP BY peer
+--         ) cte
+--         WHERE times_count >= N_times
+--         ORDER BY peer
+    ) final_result;
+
+    result_days := COALESCE(temp_days, 'No days found');
+END;
+$$ LANGUAGE plpgsql;
+
+CALL get_lucky_days( 3, '');
 
 
 
@@ -364,30 +390,70 @@ SELECT * FROM get_peer_highest_xp();
 
 
 -- 15) Determine the peers that came before the given time at least N times during the entire time
-DROP FUNCTION IF EXISTS get_peers_came_before_given_time(given_time TIME, N_times INT);
-CREATE OR REPLACE FUNCTION get_peers_came_before_given_time(given_time TIME, N_times INT)
-RETURNS TABLE
-            (
-                "Peer" VARCHAR(255)
-            )
+DROP PROCEDURE IF EXISTS get_peers_came_before_given_time(given_time TIME, N_times INT, OUT result_peers VARCHAR);
+CREATE OR REPLACE PROCEDURE get_peers_came_before_given_time(given_time TIME, N_times INT, OUT result_peers TEXT)
 AS
 $$
+DECLARE
+    temp_peers VARCHAR;
 BEGIN
-    RETURN QUERY
-        WITH cte AS (
+    SELECT string_agg(peer, E'\n')
+    INTO temp_peers
+    FROM (
+        SELECT peer
+        FROM (
             SELECT peer, count(time) AS times_count
             FROM timetracking
             WHERE time <= given_time AND presence = 1
             GROUP BY peer
-        )
-        SELECT peer
-        FROM cte
-        WHERE times_count >= N_times;
+        ) cte
+        WHERE times_count >= N_times
+        ORDER BY peer
+    ) final_result;
+
+    result_peers := COALESCE(temp_peers, 'No peers found');
 END;
 $$ LANGUAGE plpgsql;
 
-SELECT * FROM get_peers_came_before_given_time('12:00:00'::TIME, 5);
+CALL get_peers_came_before_given_time('12:00:00'::time, 3, '');
+
 
 
 -- 16) Determine the peers who left the campus more than M times during the last N days
+DROP PROCEDURE IF EXISTS get_peers_left_campus_more_than_M_times(M_times INT, N_days INT, OUT result_peers VARCHAR);
+CREATE OR REPLACE PROCEDURE get_peers_left_campus_more_than_M_times(M_times INT, N_days INT, OUT result_peers TEXT)
+AS
+$$
+DECLARE
+    temp_peers VARCHAR;
+BEGIN
+    SELECT string_agg(peer, E'\n')
+    INTO temp_peers
+    FROM (
+            SELECT peer
+            FROM (SELECT peer, count(presence) AS times_count
+                  FROM timetracking
+                  WHERE date > (CURRENT_DATE - N_days)
+                    AND presence = 2
+                  GROUP BY peer
+                  ORDER BY peer
+                  ) cte
+            WHERE times_count >= M_times
+            ORDER BY peer
+    ) final_result;
+
+    result_peers := COALESCE(temp_peers, 'No peers found');
+END;
+$$ LANGUAGE plpgsql;
+
+-- INSERT INTO timetracking (id, peer, date, time, presence) VALUES (20611,'aaarswhfom', '2024-12-10', '10:01:21',1);
+-- INSERT INTO timetracking (id, peer, date, time, presence) VALUES (20612,'aaarswhfom', '2024-12-10', '12:01:21',2);
+-- INSERT INTO timetracking (id, peer, date, time, presence) VALUES (20613,'aaarswhfom', '2024-12-10', '13:01:21',1);
+-- INSERT INTO timetracking (id, peer, date, time, presence) VALUES (20614,'aaarswhfom', '2024-12-10', '13:01:21',2);
+
+CALL get_peers_left_campus_more_than_M_times(2, 2, '');
+
+
+
 -- 17) Determine for each month the percentage of early entries
+
