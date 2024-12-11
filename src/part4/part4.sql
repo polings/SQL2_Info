@@ -14,8 +14,8 @@ CREATE DATABASE "s21_info_temp";
 
 
 
--- 1) Создай хранимую процедуру, которая, не уничтожая базу данных,
--- уничтожает все те таблицы текущей базы данных, имена которых начинаются с фразы 'TableName'.
+-- 1) Create a stored procedure that, without destroying the database, destroys all those
+-- tables in the current database whose names begin with the phrase 'TableName'.
 CREATE OR REPLACE PROCEDURE DeleteTableNameTables()
 LANGUAGE plpgsql
 AS $$
@@ -41,92 +41,83 @@ CALL DeleteTableNameTables();
 SELECT table_name FROM information_schema.tables where table_schema='public' AND table_name LIKE 'TableName%';
 
 
--- 2) Создай хранимую процедуру с выходным параметром, которая выводит список имен
--- и параметров всех скалярных SQL-функций пользователя в текущей базе данных.
--- Имена функций без параметров выводить не нужно. Имена и список параметров должны выводиться в одну строку.
--- Выходной параметр возвращает количество найденных функций.
+-- 2)  Create a stored procedure with an output parameter that outputs a list of names
+-- and parameters of all scalar user's SQL functions in the current database. Do not output
+-- function names without parameters. The names and the list of parameters must be in a single string.
+-- The output parameter returns the number of functions found.
 
--- Скалярная функция
-create or replace function is_system_catalog_table_name(r anyelement) returns boolean as
+-- FUNCTIONS FOR TESTING
+-- Scalar functions with parameters
+CREATE OR REPLACE FUNCTION is_system_catalog_table_name(r anyelement)
+RETURNS BOOLEAN AS $$
+  SELECT substring(r.relname FROM 1 for 3)='pg_'
 $$
-  select substring(r.relname from 1 for 3)='pg_'
-$$
-immutable
-language sql;
+IMMUTABLE
+LANGUAGE sql;
+SELECT * FROM pg_class pc WHERE is_system_catalog_table_name(pc);
 
-select * from pg_class pc where is_system_catalog_table_name(pc);
+CREATE OR REPLACE FUNCTION get_square_of_number(input_number INT)
+RETURNS INT AS $$
+BEGIN
+    RETURN input_number * input_number;
+END;
+$$ LANGUAGE plpgsql;
+SELECT * FROM get_square_of_number(25);
 
--- SELECT n.nspname AS schema_name,
---        p.proname AS function_name,
---        t.typname AS return_type,
---        p.proretset AS is_set_returning
--- FROM pg_proc p
--- JOIN pg_namespace n ON n.oid = p.pronamespace
--- JOIN pg_type t ON t.oid = p.prorettype
--- WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
--- ORDER BY schema_name, function_name;
+-- Scalar function with no parameters
+CREATE OR REPLACE FUNCTION get_current_timestamp()
+RETURNS TEXT AS $$
+BEGIN
+    RETURN NOW()::TEXT;
+END;
+$$ LANGUAGE plpgsql;
+SELECT * FROM get_current_timestamp();
 
+-- Not scalar function with parameter
+CREATE OR REPLACE FUNCTION get_peers_not_left_campus_whole_day(day DATE)
+    RETURNS TABLE ("Peer" VARCHAR(255))
+AS $$
+BEGIN
+    RETURN QUERY
+        SELECT peer FROM timetracking
+        WHERE date = day
+        GROUP BY peer, date
+        HAVING count(presence) > 2
+        ORDER BY peer;
+END;
+$$ LANGUAGE plpgsql;
+SELECT * FROM get_peers_not_left_campus_whole_day('2021-06-26');
 
+-- MAIN PROCEDURE
+DROP PROCEDURE IF EXISTS check_scalar_functions(OUT scalar_function_count INTEGER);
+CREATE OR REPLACE PROCEDURE check_scalar_functions(OUT scalar_function_count INTEGER)
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    rec RECORD;
+    count_scalar INT := 0;
+BEGIN
+    FOR rec IN
+        SELECT p.proname AS function_name,
+               pg_catalog.pg_get_function_arguments(p.oid) AS parameter_types, p.proretset, t.typname, cardinality(p.proargtypes)
+        FROM pg_proc p
+        JOIN pg_namespace n ON n.oid = p.pronamespace
+        JOIN pg_type t ON t.oid = p.prorettype
+        WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+          AND p.proretset = false
+          AND t.typname IN ('int4', 'text', 'bool', 'numeric', 'date', 'timestamp without time zone', 'uuid', 'float4', 'int8')
+          AND cardinality(p.proargtypes) > 0
+        ORDER BY function_name
+    LOOP
+        RAISE NOTICE 'NAME: %, PARAMETRS: %',
+                     rec.function_name, rec.parameter_types ;
+        count_scalar := count_scalar + 1;
+    END LOOP;
+    scalar_function_count := count_scalar;
+END;
+$$;
 
--- DROP PROCEDURE IF EXISTS check_scalar_functions(OUT scalar_function_count INTEGER);
--- CREATE OR REPLACE PROCEDURE check_scalar_functions(OUT scalar_function_count INTEGER)
--- LANGUAGE plpgsql
--- AS $$
--- DECLARE
---     rec RECORD;
---     count_scalar INT := 0;
--- BEGIN
---     RAISE NOTICE 'Проверка скалярных функций в базе данных:';
---
---     FOR rec IN
---         SELECT n.nspname AS schema_name,
---                p.proname AS function_name,
---                t.typname AS return_type,
---                p.proretset AS is_set_returning
---         FROM pg_proc p
---         JOIN pg_namespace n ON n.oid = p.pronamespace
---         JOIN pg_type t ON t.oid = p.prorettype
---         WHERE n.nspname NOT IN ('pg_catalog', 'information_schema') -- Исключаем системные схемы
---           --AND p.proretset = false                                  -- Только функции, не возвращающие набор
---           AND t.typname IN ('integer', 'text', 'bool', 'numeric', 'date', 'timestamp', 'uuid') -- Условие для скалярных типов
---         ORDER BY schema_name, function_name
---     LOOP
---         RAISE NOTICE 'Схема: %, Функция: %, Тип возврата: %, Скалярная: Да',
---                      rec.schema_name, rec.function_name, rec.return_type;
---         count_scalar := count_scalar + 1;
---     END LOOP;
---
---     scalar_function_count := count_scalar;
--- END;
--- $$;
---
---
--- CALL check_scalar_functions(0);
---
--- SELECT n.nspname AS schema_name,
---                p.proname AS function_name,
---                t.typname AS return_type,
---                p.proretset AS is_set_returning
---         FROM pg_proc p
---         JOIN pg_namespace n ON n.oid = p.pronamespace
---         JOIN pg_type t ON t.oid = p.prorettype
---         WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
---         ORDER BY schema_name, function_name;
---
---
--- DO $$
--- DECLARE
---     scalar_count INT;
--- BEGIN
---     CALL check_scalar_functions(scalar_count);
---     RAISE NOTICE 'Количество скалярных функций: %', scalar_count;
--- END;
--- $$;
-
-
-
-
-
+CALL check_scalar_functions(0);
 
 -- 3) Создай хранимую процедуру с выходным параметром, которая уничтожает все SQL DML триггеры в текущей базе данных.
 -- Выходной параметр возвращает количество уничтоженных триггеров.
