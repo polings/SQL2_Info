@@ -28,7 +28,7 @@ CREATE TABLE "TableName_3"();
 
 SELECT table_name FROM information_schema.tables where table_schema='public' AND table_name LIKE 'TableName%';
 
-CALL DeleteTableNameTables();
+CALL delete_tablename_tables();
 
 SELECT table_name FROM information_schema.tables where table_schema='public' AND table_name LIKE 'TableName%';
 
