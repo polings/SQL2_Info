@@ -148,38 +148,6 @@ $$;
 CALL delete_dml_triggers(0);
 
 
-SELECT
-    t.tgname AS trigger_name,
-    c.relname AS table_name,
-    CASE
-        WHEN t.tgtype & 1 <> 0 THEN 'BEFORE'
-        WHEN t.tgtype & 2 <> 0 THEN 'AFTER'
-        WHEN t.tgtype & 4 <> 0 THEN 'INSTEAD OF'
-        ELSE 'UNKNOWN'
-    END AS timing,
-    CASE
-        WHEN t.tgtype & 8 <> 0 THEN 'INSERT'
-        WHEN t.tgtype & 16 <> 0 THEN 'UPDATE'
-        WHEN t.tgtype & 32 <> 0 THEN 'DELETE'
-        ELSE 'UNKNOWN'
-    END AS event,
-    p.proname AS function_name
-FROM
-    pg_trigger t
-JOIN
-    pg_class c ON c.oid = t.tgrelid
-JOIN
-    pg_proc p ON p.oid = t.tgfoid
-WHERE
-    c.relkind = 'r' -- Only regular tables, excluding views, indexes, etc.
-    AND t.tgenabled = 'O' -- Only enabled triggers
-    AND t.tgtype & 8 <> 0  -- For INSERT triggers
-    OR t.tgtype & 16 <> 0  -- For UPDATE triggers
-    OR t.tgtype & 32 <> 0  -- For DELETE triggers
-ORDER BY
-    table_name, trigger_name;
-
-
 
 -- 4) Create a stored procedure with an input parameter that returns names
 -- and descriptions of object types (stored procedures and scalar functions only)
