@@ -257,6 +257,62 @@ SELECT * FROM get_recommended_peer_for_each_student();
 -- Started Block 2 only;
 -- Both started;
 -- Started neither.
+-- Определи процент пиров, которые:
+--
+-- Приступили только к блоку 1;
+-- Приступили только к блоку 2;
+-- Приступили к обоим;
+-- Не приступили ни к одному.
+--
+-- Пир считается приступившим к блоку, если он проходил хоть одну проверку любого задания из этого блока (по таблице Checks).
+-- Параметры процедуры: название блока 1, например, SQL, название блока 2, например, A.
+-- Формат вывода: процент приступивших только к первому блоку, процент приступивших только ко второму блоку, процент приступивших к обоим, процент не приступивших ни к одному.
+DROP FUNCTION IF EXISTS get_percentage_of_peers(block1_name VARCHAR, block2_name VARCHAR);
+CREATE OR REPLACE FUNCTION get_percentage_of_peers(block1_name VARCHAR, block2_name VARCHAR)
+RETURNS TABLE
+            (
+                "StartedBlock1" NUMERIC,
+                "StartedBlock2" NUMERIC,
+                "StartedBothBlocks" NUMERIC,
+                "DidntStartAnyBlock" NUMERIC
+            )
+AS
+$$
+BEGIN
+    block1_name := block1_name || '_';
+    block2_name := block2_name || '_';
+    RETURN QUERY
+        WITH all_peers AS (
+                SELECT COUNT(DISTINCT nickname) AS all_p
+                FROM peers c),
+            block1 AS (
+                SELECT COUNT(DISTINCT c.peer) AS count1
+                from checks c
+                WHERE c.task LIKE block1_name),
+            block2 AS (
+                SELECT COUNT(DISTINCT c.peer) AS count2
+                from checks c
+                WHERE c.task LIKE block2_name),
+            intersection AS (
+                SELECT COUNT(peer) AS count_inter
+                FROM (
+                SELECT DISTINCT c.peer
+                from checks c
+                WHERE c.task LIKE block1_name
+                INTERSECT
+                SELECT DISTINCT c.peer
+                from checks c
+                WHERE c.task LIKE block2_name) intersection
+            )
+        SELECT ROUND(block1.count1::numeric / all_peers.all_p * 100),
+               ROUND(block2.count2::numeric / all_peers.all_p * 100),
+               ROUND(intersection.count_inter::numeric / all_peers.all_p * 100),
+               100 - ROUND((block1.count1 + block2.count2 + intersection.count_inter)::numeric / all_peers.all_p * 100)
+        FROM all_peers, block1, block2, intersection;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT * FROM get_percentage_of_peers('SQL', 'AP');
 
 
 
@@ -286,7 +342,6 @@ BEGIN
                             JOIN verter v ON c.id = v.check_id
                    WHERE p.state = 'Failure'
                       OR v.state = 'Failure')
-
         SELECT s.success_peers / (s.success_peers + f.unsuccess_peers)::numeric * 100   AS "SuccessfulChecks",
                f.unsuccess_peers / (s.success_peers + f.unsuccess_peers)::numeric * 100 AS "UnsuccessfulChecks"
         FROM s,
