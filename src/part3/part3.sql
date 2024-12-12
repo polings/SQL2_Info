@@ -252,21 +252,7 @@ SELECT * FROM get_recommended_peer_for_each_student();
 
 
 
--- 9) Determine the percentage of peers who:
--- Started Block 1 only;
--- Started Block 2 only;
--- Both started;
--- Started neither.
--- Определи процент пиров, которые:
---
--- Приступили только к блоку 1;
--- Приступили только к блоку 2;
--- Приступили к обоим;
--- Не приступили ни к одному.
---
--- Пир считается приступившим к блоку, если он проходил хоть одну проверку любого задания из этого блока (по таблице Checks).
--- Параметры процедуры: название блока 1, например, SQL, название блока 2, например, A.
--- Формат вывода: процент приступивших только к первому блоку, процент приступивших только ко второму блоку, процент приступивших к обоим, процент не приступивших ни к одному.
+-- 9) Determine the percentage of peers who: started Block 1 only, started Block 2 only, both started, started neither.
 DROP FUNCTION IF EXISTS get_percentage_of_peers(block1_name VARCHAR, block2_name VARCHAR);
 CREATE OR REPLACE FUNCTION get_percentage_of_peers(block1_name VARCHAR, block2_name VARCHAR)
 RETURNS TABLE
@@ -316,7 +302,7 @@ SELECT * FROM get_percentage_of_peers('SQL', 'AP');
 
 
 
--- 10) Determine the percentage of peers who have ever successfully passed a check on their birthday
+-- 10) Determine the percentage of peers who have ever successfully passed a check on their birthday.
 DROP FUNCTION IF EXISTS get_peers_successfully_passed_check_their_birthday();
 CREATE OR REPLACE FUNCTION get_peers_successfully_passed_check_their_birthday()
 RETURNS TABLE
@@ -353,7 +339,31 @@ SELECT * FROM get_peers_successfully_passed_check_their_birthday();
 
 
 
--- 11) Determine all peers who did the given tasks 1 and 2, but did not do task 3
+-- 11) Determine all peers who did the given tasks 1 and 2, but did not do task 3.
+DROP FUNCTION IF EXISTS get_peers_completed_first_second_but_third_task(task1 VARCHAR, task2 VARCHAR, task3 VARCHAR);
+CREATE OR REPLACE FUNCTION get_peers_completed_first_second_but_third_task(task1 VARCHAR, task2 VARCHAR, task3 VARCHAR)
+    RETURNS TABLE
+        (
+            "Peer" VARCHAR
+        )
+AS
+$$
+BEGIN
+    RETURN QUERY
+        SELECT DISTINCT c.peer
+        FROM checks c
+        JOIN xp x ON c.id = x.check_id
+        JOIN (SELECT c.peer FROM checks c JOIN xp x ON c.id = x.check_id WHERE task LIKE task1) ch ON c.peer = ch.peer
+        WHERE task LIKE task2
+        GROUP BY c.peer
+        EXCEPT
+        SELECT c.peer
+        FROM checks c
+        WHERE task LIKE task3 AND c.id NOT IN (SELECT check_id FROM xp);
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT * FROM get_peers_completed_first_second_but_third_task('C5', 'CPP5', 'SQL1');
 
 
 
