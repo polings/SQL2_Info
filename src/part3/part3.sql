@@ -456,7 +456,7 @@ $$ LANGUAGE plpgsql;
 -- INSERT INTO timetracking (id, peer, date, time, presence) VALUES (20611,'aaarswhfom', '2024-12-10', '10:01:21',1);
 -- INSERT INTO timetracking (id, peer, date, time, presence) VALUES (20612,'aaarswhfom', '2024-12-10', '12:01:21',2);
 -- INSERT INTO timetracking (id, peer, date, time, presence) VALUES (20613,'aaarswhfom', '2024-12-10', '13:01:21',1);
--- INSERT INTO timetracking (id, peer, date, time, presence) VALUES (20614,'aaarswhfom', '2024-12-10', '13:01:21',2);
+-- INSERT INTO timetracking (id, peer, date, time, presence) VALUES (20614,'aaarswhfom', '2024-12-10', '15:01:21',2);
 
 CALL get_peers_left_campus_more_than_M_times(2, 2, '');
 
