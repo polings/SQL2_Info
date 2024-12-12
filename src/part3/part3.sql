@@ -170,41 +170,42 @@ SELECT * FROM get_most_frequently_checked_task_for_each_day();
 
 
 -- 7) Find all peers who have completed the whole given block of tasks and the completion date of the last task
+DROP FUNCTION IF EXISTS get_peers_completed_block_of_tasks(block_name VARCHAR);
+CREATE OR REPLACE FUNCTION get_peers_completed_block_of_tasks(block_name VARCHAR)
+    RETURNS TABLE
+        (
+            "Peer" VARCHAR,
+            "Day" DATE
+        )
+AS
+$$
+BEGIN
+    block_name := block_name || '_';
+    RETURN QUERY
+        WITH task_count AS (
+        select COUNT(*) AS task_count
+          from tasks
+          where title LIKE block_name
+        ), peer_task_count AS (
+            SELECT c.peer, COUNT(distinct task) AS peer_task_count
+            FROM checks c
+            join xp x on c.id = x.check_id
+            WHERE task LIKE block_name
+            GROUP BY peer
+        ), last_task AS (
+            SELECT title
+            from tasks
+            where title LIKE block_name
+            ORDER BY title DESC
+            LIMIT 1
+        )
+        SELECT ptc.peer, (SELECT date FROM checks, last_task lt WHERE peer = ptc.peer AND task = lt.title ORDER BY 1 LIMIT 1) d
+        FROM task_count tc, peer_task_count ptc
+        WHERE ptc.peer_task_count = tc.task_count;
+END;
+$$ LANGUAGE plpgsql;
 
--- Найди всех пиров, выполнивших весь заданный блок задач и дату завершения последнего задания
--- Параметры процедуры: название блока, например, «CPP».
--- Результат выведи отсортированным по дате завершения.
--- Формат вывода: ник пира, дата завершения блока (т. е. последнего выполненного задания из этого блока).
-
--- SELECT peer, SUBSTRING(task FROM '^[^0-9]+') AS title_prefix, COUNT(*)
--- FROM checks
--- WHERE task LIKE 'CPP_'
--- GROUP BY peer, title_prefix
--- ORDER BY peer;
---
--- SELECT SUBSTRING(title FROM '^[^0-9]+') AS title_prefix
--- FROM tasks
--- WHERE title LIKE 'AP_'
--- GROUP BY title_prefix
--- ORDER BY title_prefix;
-
-
--- DROP FUNCTION IF EXISTS get_peers_completed_block_of_tasks(block_name VARCHAR);
-
--- CREATE OR REPLACE FUNCTION get_peers_completed_block_of_tasks(block_name VARCHAR)
---     RETURNS TABLE
---         (
---             "Peer" VARCHAR,
---             "Day" DATE
---         )
--- AS
--- $$
--- BEGIN
---     RETURN QUERY
---
---
--- END;
--- $$ LANGUAGE plpgsql;
+SELECT * FROM get_peers_completed_block_of_tasks('A');
 
 
 
