@@ -462,6 +462,7 @@ $$ LANGUAGE plpgsql;
 SELECT * FROM get_peer_highest_xp();
 
 
+
 -- 15) Determine the peers that came before the given time at least N times during the entire time
 DROP PROCEDURE IF EXISTS get_peers_came_before_given_time(given_time TIME, N_times INT, OUT result_peers VARCHAR);
 CREATE OR REPLACE PROCEDURE get_peers_came_before_given_time(given_time TIME, N_times INT, OUT result_peers TEXT)
@@ -529,4 +530,34 @@ CALL get_peers_left_campus_more_than_M_times(2, 2, '');
 
 
 -- 17) Determine for each month the percentage of early entries
+DROP FUNCTION IF EXISTS get_early_entries_birthday_month();
+CREATE OR REPLACE FUNCTION get_early_entries_birthday_month()
+RETURNS TABLE
+            (
+                "Month" TEXT,
+                "EarlyEntries" NUMERIC
+            )
+AS
+$$
+BEGIN
+    RETURN QUERY
+        WITH birthday_presence AS (
+            SELECT p.nickname,
+                   TO_CHAR(p.birthday, 'Month') AS birth_month,
+                   EXTRACT(MONTH FROM p.birthday) AS month_count,
+                   COUNT(tt.date) AS birthday_month_presences,
+                   MIN(tt.time),
+                   CASE WHEN MIN(tt.time) < '12:00:00' THEN 1 END AS early_presences
+            FROM Peers p
+            JOIN TimeTracking tt ON p.nickname = tt.peer
+            WHERE EXTRACT(MONTH FROM tt.date) = EXTRACT(MONTH FROM p.birthday)
+            GROUP BY tt.date, TO_CHAR(p.birthday, 'Month'), p.nickname
+            )
+        SELECT bp.birth_month, ROUND(SUM(bp.early_presences)::numeric / COUNT(bp.birthday_month_presences) * 100)
+        FROM birthday_presence bp
+        GROUP BY bp.birth_month, bp.month_count
+        ORDER BY bp.month_count;
+END;
+$$ LANGUAGE plpgsql;
 
+SELECT * FROM get_early_entries_birthday_month();
