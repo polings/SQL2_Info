@@ -114,6 +114,9 @@ CALL check_scalar_functions(0);
 
 
 
+-- 3) Создай хранимую процедуру с выходным параметром, которая уничтожает все SQL DML триггеры в текущей базе данных.
+-- Выходной параметр возвращает количество уничтоженных триггеров.
+
 -- 3) Create a stored procedure with an output parameter that destroys all SQL DML triggers in the current database.
 -- The output parameter will return the number of triggers destroyed.
 DROP PROCEDURE IF EXISTS delete_dml_triggers(OUT deleted_triggers_count INTEGER);
@@ -160,7 +163,7 @@ BEGIN
     RAISE NOTICE 'Name | Type | Description';
 
     FOR rec IN
-        SELECT p.proname AS object_name, 
+        SELECT p.proname AS object_name,
                'Procedure' AS object_type,
                obj_description(p.oid, 'pg_proc') AS object_description,
                pg_catalog.pg_get_functiondef(p.oid) AS object_definition
@@ -170,12 +173,12 @@ BEGIN
           AND p.prokind = 'p'
           AND pg_catalog.pg_get_functiondef(p.oid) ILIKE '%' || search_text || '%'
     LOOP
-        RAISE NOTICE '% | % | %', rec.object_name, rec.object_type, 
+        RAISE NOTICE '% | % | %', rec.object_name, rec.object_type,
             COALESCE(rec.object_description, 'No description available');
     END LOOP;
 
     FOR rec IN
-        SELECT p.proname AS object_name, 
+        SELECT p.proname AS object_name,
                'Function' AS object_type,
                obj_description(p.oid, 'pg_proc') AS object_description,
                pg_catalog.pg_get_functiondef(p.oid) AS object_definition
@@ -185,7 +188,7 @@ BEGIN
           AND p.prokind = 'f'
           AND pg_catalog.pg_get_functiondef(p.oid) ILIKE '%' || search_text || '%'
     LOOP
-        RAISE NOTICE '% | % | %', rec.object_name, rec.object_type, 
+        RAISE NOTICE '% | % | %', rec.object_name, rec.object_type,
             COALESCE(rec.object_description, 'No description available');
     END LOOP;
 END;
