@@ -117,7 +117,6 @@ CALL check_scalar_functions(0);
 -- 3) Create a stored procedure with an output parameter that destroys all SQL DML triggers in the current database.
 -- The output parameter will return the number of triggers destroyed.
 DROP PROCEDURE IF EXISTS delete_dml_triggers(OUT deleted_triggers_count INTEGER);
-
 CREATE OR REPLACE PROCEDURE delete_dml_triggers(OUT deleted_triggers_count INTEGER)
 LANGUAGE plpgsql
 AS $$
@@ -142,6 +141,43 @@ BEGIN
 END;
 $$;
 
+-- Triggers for TESTING
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(100) NOT NULL,
+    price NUMERIC(10, 2) NOT NULL
+);
+
+-- Check the price before insertion
+CREATE OR REPLACE FUNCTION check_price_before_insert()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.price <= 0 THEN
+        RAISE EXCEPTION 'Price should be more than 0.';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER check_price_before_insert
+BEFORE INSERT ON products
+FOR EACH ROW
+EXECUTE FUNCTION check_price_before_insert();
+
+-- Logging new products in console
+CREATE OR REPLACE FUNCTION log_after_product_insert()
+RETURNS TRIGGER AS $$
+BEGIN
+    RAISE NOTICE 'Added new product: %', NEW.product_name;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER log_after_product_insert
+AFTER INSERT ON products
+FOR EACH ROW
+EXECUTE FUNCTION log_after_product_insert();
+
 CALL delete_dml_triggers(0);
 
 
@@ -150,7 +186,6 @@ CALL delete_dml_triggers(0);
 -- and descriptions of object types (stored procedures and scalar functions only)
 -- that have a string specified by the procedure parameter.
 DROP PROCEDURE IF EXISTS find_objects_by_text(search_text TEXT);
-
 CREATE OR REPLACE PROCEDURE find_objects_by_text(search_text TEXT)
 LANGUAGE plpgsql
 AS $$
@@ -191,31 +226,28 @@ BEGIN
 END;
 $$;
 
--- Создание схемы для теста
-CREATE SCHEMA IF NOT EXISTS test_schema;
-
--- Хранимая процедура, содержащая искомую строку
-CREATE OR REPLACE PROCEDURE test_schema.sample_procedure()
+-- Stored procedure, that have a specified string
+CREATE OR REPLACE PROCEDURE sample_procedure()
 LANGUAGE plpgsql
 AS $$
 BEGIN
     RAISE NOTICE 'This is a test procedure with search_text';
 END;
 $$;
-COMMENT ON PROCEDURE test_schema.sample_procedure() IS 'This procedure has search_text';
+COMMENT ON PROCEDURE sample_procedure() IS 'This procedure has search_text';
 
--- Хранимая процедура, которая не содержит искомую строку
-CREATE OR REPLACE PROCEDURE test_schema.other_procedure()
+-- Stored procedure, that doesn't have a specified string
+CREATE OR REPLACE PROCEDURE other_procedure()
 LANGUAGE plpgsql
 AS $$
 BEGIN
     RAISE NOTICE 'This procedure does not contain the string';
 END;
 $$;
-COMMENT ON PROCEDURE test_schema.other_procedure() IS 'This procedure does not have any needed text';
+COMMENT ON PROCEDURE other_procedure() IS 'This procedure does not have any needed text';
 
--- Скалярная функция, содержащая искомую строку
-CREATE OR REPLACE FUNCTION test_schema.sample_function()
+-- Scalar function, that have a specified string
+CREATE OR REPLACE FUNCTION sample_function()
 RETURNS TEXT
 LANGUAGE plpgsql
 AS $$
@@ -223,10 +255,10 @@ BEGIN
     RETURN 'This is a test function with search_text';
 END;
 $$;
-COMMENT ON FUNCTION test_schema.sample_function() IS 'This func has search_text';
+COMMENT ON FUNCTION sample_function() IS 'This func has search_text';
 
--- Скалярная функция, которая не содержит искомую строку
-CREATE OR REPLACE FUNCTION test_schema.other_function()
+-- Scalar function, that doesn't have a specified string
+CREATE OR REPLACE FUNCTION other_function()
 RETURNS TEXT
 LANGUAGE plpgsql
 AS $$
@@ -234,9 +266,6 @@ BEGIN
     RETURN 'No relevant string here';
 END;
 $$;
-COMMENT ON FUNCTION test_schema.other_function() IS 'This func does not have any needed text';
+COMMENT ON FUNCTION other_function() IS 'This func does not have any needed text';
 
 CALL find_objects_by_text('search_text');
-
-
-
