@@ -462,6 +462,7 @@ $$ LANGUAGE plpgsql;
 SELECT * FROM get_peer_highest_xp();
 
 
+
 -- 15) Determine the peers that came before the given time at least N times during the entire time
 DROP PROCEDURE IF EXISTS get_peers_came_before_given_time(given_time TIME, N_times INT, OUT result_peers VARCHAR);
 CREATE OR REPLACE PROCEDURE get_peers_came_before_given_time(given_time TIME, N_times INT, OUT result_peers TEXT)

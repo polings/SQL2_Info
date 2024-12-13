@@ -114,9 +114,6 @@ CALL check_scalar_functions(0);
 
 
 
--- 3) Создай хранимую процедуру с выходным параметром, которая уничтожает все SQL DML триггеры в текущей базе данных.
--- Выходной параметр возвращает количество уничтоженных триггеров.
-
 -- 3) Create a stored procedure with an output parameter that destroys all SQL DML triggers in the current database.
 -- The output parameter will return the number of triggers destroyed.
 DROP PROCEDURE IF EXISTS delete_dml_triggers(OUT deleted_triggers_count INTEGER);
