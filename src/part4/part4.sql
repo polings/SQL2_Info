@@ -1,7 +1,7 @@
--- DROP DATABASE IF EXISTS "s21_info_temp";
--- CREATE DATABASE "s21_info_temp";
+DROP DATABASE IF EXISTS "s21_info_temp";
+CREATE DATABASE "s21_info_temp";
 
--- \c s21_info;
+\c s21_info;
 
 
 
@@ -114,9 +114,6 @@ CALL check_scalar_functions(0);
 
 
 
--- 3) Создай хранимую процедуру с выходным параметром, которая уничтожает все SQL DML триггеры в текущей базе данных.
--- Выходной параметр возвращает количество уничтоженных триггеров.
-
 -- 3) Create a stored procedure with an output parameter that destroys all SQL DML triggers in the current database.
 -- The output parameter will return the number of triggers destroyed.
 DROP PROCEDURE IF EXISTS delete_dml_triggers(OUT deleted_triggers_count INTEGER);
@@ -152,11 +149,6 @@ CALL delete_dml_triggers(0);
 -- 4) Create a stored procedure with an input parameter that returns names
 -- and descriptions of object types (stored procedures and scalar functions only)
 -- that have a string specified by the procedure parameter.
-
--- 4) Создай хранимую процедуру с входным параметром, которая выводит имена
--- и описания типа объектов (только хранимых процедур и скалярных функций),
--- в тексте которых на языке SQL встречается строка, задаваемая параметром процедуры.
-
 DROP PROCEDURE IF EXISTS find_objects_by_text(search_text TEXT);
 
 CREATE OR REPLACE PROCEDURE find_objects_by_text(search_text TEXT)
