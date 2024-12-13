@@ -170,41 +170,42 @@ SELECT * FROM get_most_frequently_checked_task_for_each_day();
 
 
 -- 7) Find all peers who have completed the whole given block of tasks and the completion date of the last task
+DROP FUNCTION IF EXISTS get_peers_completed_block_of_tasks(block_name VARCHAR);
+CREATE OR REPLACE FUNCTION get_peers_completed_block_of_tasks(block_name VARCHAR)
+    RETURNS TABLE
+        (
+            "Peer" VARCHAR,
+            "Day" DATE
+        )
+AS
+$$
+BEGIN
+    block_name := block_name || '_';
+    RETURN QUERY
+        WITH task_count AS (
+        select COUNT(*) AS task_count
+          from tasks
+          where title LIKE block_name
+        ), peer_task_count AS (
+            SELECT c.peer, COUNT(distinct task) AS peer_task_count
+            FROM checks c
+            join xp x on c.id = x.check_id
+            WHERE task LIKE block_name
+            GROUP BY peer
+        ), last_task AS (
+            SELECT title
+            from tasks
+            where title LIKE block_name
+            ORDER BY title DESC
+            LIMIT 1
+        )
+        SELECT ptc.peer, (SELECT date FROM checks, last_task lt WHERE peer = ptc.peer AND task = lt.title ORDER BY 1 LIMIT 1) d
+        FROM task_count tc, peer_task_count ptc
+        WHERE ptc.peer_task_count = tc.task_count;
+END;
+$$ LANGUAGE plpgsql;
 
--- Найди всех пиров, выполнивших весь заданный блок задач и дату завершения последнего задания
--- Параметры процедуры: название блока, например, «CPP».
--- Результат выведи отсортированным по дате завершения.
--- Формат вывода: ник пира, дата завершения блока (т. е. последнего выполненного задания из этого блока).
-
--- SELECT peer, SUBSTRING(task FROM '^[^0-9]+') AS title_prefix, COUNT(*)
--- FROM checks
--- WHERE task LIKE 'CPP_'
--- GROUP BY peer, title_prefix
--- ORDER BY peer;
---
--- SELECT SUBSTRING(title FROM '^[^0-9]+') AS title_prefix
--- FROM tasks
--- WHERE title LIKE 'AP_'
--- GROUP BY title_prefix
--- ORDER BY title_prefix;
-
-
--- DROP FUNCTION IF EXISTS get_peers_completed_block_of_tasks(block_name VARCHAR);
-
--- CREATE OR REPLACE FUNCTION get_peers_completed_block_of_tasks(block_name VARCHAR)
---     RETURNS TABLE
---         (
---             "Peer" VARCHAR,
---             "Day" DATE
---         )
--- AS
--- $$
--- BEGIN
---     RETURN QUERY
---
---
--- END;
--- $$ LANGUAGE plpgsql;
+SELECT * FROM get_peers_completed_block_of_tasks('A');
 
 
 
@@ -256,6 +257,62 @@ SELECT * FROM get_recommended_peer_for_each_student();
 -- Started Block 2 only;
 -- Both started;
 -- Started neither.
+-- Определи процент пиров, которые:
+--
+-- Приступили только к блоку 1;
+-- Приступили только к блоку 2;
+-- Приступили к обоим;
+-- Не приступили ни к одному.
+--
+-- Пир считается приступившим к блоку, если он проходил хоть одну проверку любого задания из этого блока (по таблице Checks).
+-- Параметры процедуры: название блока 1, например, SQL, название блока 2, например, A.
+-- Формат вывода: процент приступивших только к первому блоку, процент приступивших только ко второму блоку, процент приступивших к обоим, процент не приступивших ни к одному.
+DROP FUNCTION IF EXISTS get_percentage_of_peers(block1_name VARCHAR, block2_name VARCHAR);
+CREATE OR REPLACE FUNCTION get_percentage_of_peers(block1_name VARCHAR, block2_name VARCHAR)
+RETURNS TABLE
+            (
+                "StartedBlock1" NUMERIC,
+                "StartedBlock2" NUMERIC,
+                "StartedBothBlocks" NUMERIC,
+                "DidntStartAnyBlock" NUMERIC
+            )
+AS
+$$
+BEGIN
+    block1_name := block1_name || '_';
+    block2_name := block2_name || '_';
+    RETURN QUERY
+        WITH all_peers AS (
+                SELECT COUNT(DISTINCT nickname) AS all_p
+                FROM peers c),
+            block1 AS (
+                SELECT COUNT(DISTINCT c.peer) AS count1
+                from checks c
+                WHERE c.task LIKE block1_name),
+            block2 AS (
+                SELECT COUNT(DISTINCT c.peer) AS count2
+                from checks c
+                WHERE c.task LIKE block2_name),
+            intersection AS (
+                SELECT COUNT(peer) AS count_inter
+                FROM (
+                SELECT DISTINCT c.peer
+                from checks c
+                WHERE c.task LIKE block1_name
+                INTERSECT
+                SELECT DISTINCT c.peer
+                from checks c
+                WHERE c.task LIKE block2_name) intersection
+            )
+        SELECT ROUND(block1.count1::numeric / all_peers.all_p * 100),
+               ROUND(block2.count2::numeric / all_peers.all_p * 100),
+               ROUND(intersection.count_inter::numeric / all_peers.all_p * 100),
+               100 - ROUND((block1.count1 + block2.count2 + intersection.count_inter)::numeric / all_peers.all_p * 100)
+        FROM all_peers, block1, block2, intersection;
+END;
+$$ LANGUAGE plpgsql;
+
+SELECT * FROM get_percentage_of_peers('SQL', 'AP');
 
 
 
@@ -285,7 +342,6 @@ BEGIN
                             JOIN verter v ON c.id = v.check_id
                    WHERE p.state = 'Failure'
                       OR v.state = 'Failure')
-
         SELECT s.success_peers / (s.success_peers + f.unsuccess_peers)::numeric * 100   AS "SuccessfulChecks",
                f.unsuccess_peers / (s.success_peers + f.unsuccess_peers)::numeric * 100 AS "UnsuccessfulChecks"
         FROM s,
